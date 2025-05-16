@@ -64,10 +64,7 @@ provider:
 plugins:
     - serverless-dotenv-plugin
     - serverless-offline
-    - serverless-plugin-custom-roles
     - serverless-domain-manager
-    - serverless-step-functions
-    - serverless-lift
 
 build:
     esbuild:

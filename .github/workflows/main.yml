@@ -51,27 +51,18 @@ jobs:
             - name: Install Serverless and Plugins
               run: |
                   yarn global add serverless@4.2.1
-                  yarn add serverless-plugin-custom-roles@3.1.1
-                  yarn add serverless-step-functions@3.14.0
                   yarn add serverless-domain-manager@7.1.2
-                  yarn add serverless-lift@1.29.0
 
             - name: Set Environment Variables
               run: |
                   echo "STAGE=${{ github.ref_name == 'develop' && 'dev' || github.ref_name == 'staging' && 'staging' || github.ref_name == 'master' && 'prod' }}" >> $GITHUB_ENV
                   echo "REGION=${{ vars.AWS_REGION }}" >> $GITHUB_ENV
 
-                  echo "ANALYTICS=${{ vars.ANALYTICS }}" >> $GITHUB_ENV
-
                   echo "CUSTOM_API_DOMAIN=${{ vars.CUSTOM_API_DOMAIN }}" >> $GITHUB_ENV
 
                   echo "VERSION_LAMBDA_FUNCTIONS=${{ vars.VERSION_LAMBDA_FUNCTIONS }}" >> $GITHUB_ENV
 
                   echo "TOKEN_REFRESH_RATE=${{ vars.TOKEN_REFRESH_RATE }}" >> $GITHUB_ENV
-                  echo "TOKEN_REFRESH_LIMIT=${{ vars.TOKEN_REFRESH_LIMIT }}" >> $GITHUB_ENV
-
-                  echo "EXCHANGE_RPS_LIMIT=${{ vars.EXCHANGE_RPS_LIMIT }}" >> $GITHUB_ENV
-                  echo "EXCHANGE_REQUEST_CHUNK_BUFFER_SECONDS=${{ vars.EXCHANGE_REQUEST_CHUNK_BUFFER_SECONDS }}" >> $GITHUB_ENV
 
             - name: Set Environment Secrets
               run: |
@@ -85,25 +76,12 @@ jobs:
                   echo "AWS_SUBNET_A=${{ secrets.AWS_SUBNET_A }}" >> $GITHUB_ENV
                   echo "AWS_SUBNET_B=${{ secrets.AWS_SUBNET_B }}" >> $GITHUB_ENV
                   echo "AWS_SUBNET_C=${{ secrets.AWS_SUBNET_C }}" >> $GITHUB_ENV
-                  echo "IAM_SCHEDULE_EXECUTOR_ROLE_SUFFIX=${{ secrets.IAM_SCHEDULE_EXECUTOR_ROLE_SUFFIX }}" >> $GITHUB_ENV
                   echo "API_ID=${{ secrets.AWS_API_ID }}" >> $GITHUB_ENV
                   echo "KMS_ENCRYPTION_KEY_ID=${{ secrets.KMS_ENCRYPTION_KEY_ID }}" >> $GITHUB_ENV
 
                   echo "SENTRY_DSN=${{ secrets.SENTRY_DSN }}" >> $GITHUB_ENV
                   echo "SENTRY_AUTH_TOKEN=${{ secrets.SENTRY_AUTH_TOKEN }}" >> $GITHUB_ENV
 
-                  echo "COINMARKETCAP_API_KEY=${{ secrets.COINMARKETCAP_API_KEY }}" >> $GITHUB_ENV
-
-                  echo "DATABASE_URL_ADMIN=${{ secrets.DATABASE_URL_ADMIN }}" >> $GITHUB_ENV
-                  echo "DATABASE_URL_SYSTEM=${{ secrets.DATABASE_URL_SYSTEM }}" >> $GITHUB_ENV
-                  echo "DATABASE_URL_CLIENT=${{ secrets.DATABASE_URL_CLIENT }}" >> $GITHUB_ENV
-                  echo "SUPABASE_AUTH_SECRET=${{ secrets.SUPABASE_AUTH_SECRET }}" >> $GITHUB_ENV
-
-                  echo "CUSTOMERIO_API_KEY=${{ secrets.CUSTOMERIO_API_KEY }}" >> $GITHUB_ENV
-                  echo "CUSTOMERIO_SITE_ID=${{ secrets.CUSTOMERIO_SITE_ID }}" >> $GITHUB_ENV
-                  echo "CUSTOMERIO_APP_API_KEY=${{ secrets.CUSTOMERIO_APP_API_KEY }}" >> $GITHUB_ENV
-
-                  echo "NORMAL_PROXY_URL=${{ secrets.NORMAL_PROXY_URL }}" >> $GITHUB_ENV
                   echo "JEST_API_KEY=${{ secrets.JEST_API_KEY }}" >> $GITHUB_ENV
 
             - name: Deploy
@@ -118,4 +96,4 @@ jobs:
               run: |
                   yarn add @sentry/cli
                   sentry-cli releases finalize $(npm pkg get version | tr -d '"')
-                  sentry-cli sourcemaps inject --org normal-finance --project api .webpack && sentry-cli sourcemaps upload --org normal-finance --project api .webpack
+                  sentry-cli sourcemaps inject --org normal-finance --project api .webpack && sentry-cli sourcemaps upload --org normal-finance --project stellar-crank .webpack
