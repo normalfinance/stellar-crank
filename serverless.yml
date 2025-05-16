@@ -1,0 +1,138 @@
+org: normalfinance
+app: normal-stellar-crank
+service: normal-stellar-crank
+frameworkVersion: '4.2.1'
+# useDotenv: true
+provider:
+    name: aws
+    apiGateway:
+        disableDefaultEndpoint: true
+        apiKeySourceType: HEADER
+        apiKeys: ${self:custom.apiKeys.${opt:stage, 'local'}}
+    vpc:
+        securityGroupIds:
+            - ${env:AWS_LAMBDA_SECURITY_GROUP_ID}
+        subnetIds:
+            - ${env:AWS_SUBNET_A}
+            - ${env:AWS_SUBNET_B}
+            - ${env:AWS_SUBNET_C}
+    runtime: nodejs20.x
+    lambdaHashingVersion: '20201221'
+    stage: ${env:STAGE}
+    region: ${env:REGION}
+    memorySize: 256 # optional, in MB, default is 1024
+    timeout: 10 # optional, in seconds, default is 6
+    versionFunctions: ${env:VERSION_LAMBDA_FUNCTIONS}
+    accountId: ${env:AWS_ACCOUNT_ID}
+    environment:
+        # AWS
+        STAGE: ${env:STAGE}
+        REGION: ${env:REGION}
+        AWS_ACCOUNT_ID: ${env:AWS_ACCOUNT_ID}
+
+        ANALYTICS: ${env:ANALYTICS}
+
+        # API Gateway
+        API_ID: ${env:API_ID}
+
+        # KMS
+        KMS_ENCRYPTION_KEY_ID: ${env:KMS_ENCRYPTION_KEY_ID}
+
+        # Lambda
+        lambdaPrefix: '${self:service}-${self:provider.stage}-'
+
+        # Normal
+        EXCHANGE_RPS_LIMIT: ${env:EXCHANGE_RPS_LIMIT}
+    tracing:
+        lambda: true
+    iamRoleStatements: # [Optional] these statements will be applied to all functions
+        - Effect: 'Allow'
+          Action:
+              - 'logs:CreateLogStream'
+              - 'logs:CreateLogGroup'
+          Resource: 'arn:aws:logs:${self:provider.region}:${self:provider.accountId}:log-group:/aws/lambda/normal-api-main-__ENV__*:*'
+        - Effect: 'Allow'
+          Action:
+              - 'logs:PutLogEvents'
+          Resource: 'arn:aws:logs:${self:provider.region}:${self:provider.accountId}:log-group:/aws/lambda/normal-api-main-__ENV__*:*:*'
+        - Effect: 'Allow'
+          Action:
+              - 'xray:PutTraceSegments'
+              - 'xray:PutTelemetryRecords'
+          Resource: '*'
+
+plugins:
+    - serverless-dotenv-plugin
+    - serverless-offline
+    - serverless-plugin-custom-roles
+    - serverless-domain-manager
+    - serverless-step-functions
+    - serverless-lift
+
+build:
+    esbuild:
+        bundle: true
+        minify: true
+        external:
+            - 'superagent-proxy'
+            - '@sentry/serverless'
+            - '@sentry/profiling-node'
+        sourcemap:
+            # The sourcemap type to use, options are (inline, linked, or external)
+            type: linked
+            # Whether to set the NODE_OPTIONS on functions to enable sourcemaps on Lambda
+            setNodeOptions: true
+
+custom:
+    apiKeys:
+        local:
+            - name: jestApiKey
+              value: ${env:JEST_API_KEY}
+        dev:
+            - name: '${self:service}-${opt:stage,self:provider.stage}'
+        staging:
+            - name: '${self:service}-${opt:stage,self:provider.stage}'
+        prod:
+            - name: '${self:service}-${opt:stage,self:provider.stage}'
+    customDomain:
+        domainName: ${env:CUSTOM_API_DOMAIN}
+        stage: ${self:provider.stage}
+        basePath: v1
+        certificateName: ${env:CUSTOM_API_DOMAIN}
+        createRoute53Record: false
+        createRoute53IPv6Record: false
+        endpointType: 'edge'
+        securityPolicy: tls_1_2
+        apiType: rest
+        autoDomain: false
+
+functions:
+    # Auth
+    customAuthorizer:
+        handler: src/lambdas/auth/authorizer.handler
+
+    # Cron
+    rebalancePools:
+        handler: src/lambdas/cron/rebalancePools/index.handler
+        timeout: 10
+        events:
+            - schedule:
+                  rate: 'rate(${env:TOKEN_REFRESH_RATE})' # Every 5 minutes in prod, every 1 day in dev
+                  input:
+                      limit: ${env:TOKEN_REFRESH_LIMIT}
+
+    # Webhooks
+    reflectorSubscriptionWebjook:
+        handler: src/lambdas/webhook/reflector_subscription/create.handler
+        events:
+            - http:
+                  path: /webhook/reflector
+                  method: post
+                  cors: true
+                  private: true
+                  authorizer: customAuthorizer
+        iamRoleStatements:
+            - Effect: 'Allow'
+              Action:
+                  - 'kms:Decrypt'
+              Resource: 'arn:aws:kms:${self:provider.region}:${self:provider.accountId}:key/${env:KMS_ENCRYPTION_KEY_ID}'
