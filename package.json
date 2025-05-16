@@ -48,6 +48,7 @@
 		"@sentry/profiling-node": "^7.113.0",
 		"@sentry/serverless": "^7.113.0",
 		"@sentry/webpack-plugin": "^2.16.1",
+		"@stellar/stellar-sdk": "^13.3.0",
 		"jsonwebtoken": "^9.0.2",
 		"lodash": "4.17.21",
 		"query-string": "6"
